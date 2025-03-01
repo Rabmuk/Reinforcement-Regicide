@@ -22,7 +22,7 @@ class Card:
 
         return value_order[self.value] < value_order[other.value]
     
-    def get_card_health(self):
+    def get_card_health(self)->int:
         if self.value == 'J':
             return 20
         elif self.value == 'Q':
@@ -31,8 +31,20 @@ class Card:
             return 40
         else:
             return 0
+    
+    def get_card_attack(self)->int:
+        if self.value == 'J':
+            return 10
+        elif self.value == 'Q':
+            return 15
+        elif self.value == 'K':
+            return 20
+        elif self.value == 'A':
+            return 1
+        else:
+            return int(self.value)
         
-    def check_card_command(self, command):
+    def check_card_command(self, command:str)->bool:
         if not command.startswith(self.value):
             return False
         command = command.strip(self.value)
@@ -44,7 +56,17 @@ class Card:
         return False
 
 class Deck:
-    def __init__(self, deck_type='Normal', shuffle=True):
+    def __init__(self, deck_type:str='Normal', shuffle:bool=True):
+        """
+        Create a deck of cards based on the specified type.
+
+        Parameters:
+        deck_type (str): The type of deck to create. Options are:
+        - 'Normal': Standard 52-card deck.
+        - 'Tavern': 40-card deck with values 2-10 and A.
+        - 'Castle': 12-card deck with J, Q, K.  
+        - 'Empty': An empty deck.
+        """
         self.cards = []
         if deck_type == 'Normal':
             suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
@@ -78,8 +100,6 @@ class Deck:
 
     def __str__(self):
         return ', '.join(str(card) for card in self.cards)
-
-print(Deck(deck_type='Castle'))
 
 class Player:
     def __init__(self):
