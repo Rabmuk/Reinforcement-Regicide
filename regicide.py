@@ -92,14 +92,22 @@ class Deck:
         if shuffle:
             self.shuffle()
 
+    def __len__(self):
+        return len(self.cards)
+
     def draw_card(self):
         return self.cards.pop() if self.cards else None
     
-    def add_card(self, card):
-        self.cards.append(card)
+    def add_card(self, card:Card | list[Card]):
+        """Adds a card or list of cards to the deck."""
+        if isinstance(card, list):
+            for c in card:
+                self.cards.append(c)
+        elif isinstance(card, Card):
+            self.cards.append(card)
 
     def add_card_on_top(self, card):
-        self.cards.insert(0, card)
+        self.cards.insert(0, card) 
 
     def shuffle(self):
         random.shuffle(self.cards)
@@ -146,24 +154,41 @@ class Player:
         """Checks if the player has a card that matches the command."""
         return any(card.check_card_command(command) for card in self.hand)
 
-    def parse_and_check_command(self, command):
-        """Takes a str and verifies if it is formatted correctly and that this player has the required cards."""
-        command = command.replace(' ', '').replace(',', '').replace('.', '')
-        commands = []
+    def parse_and_check_command(self, command:str)->list[str]:
+        """Takes a command str and verifies if it is formatted correctly.
+        Verifies the command is for cards in the player's hand.
+        Verifies the command follows multicard rules.
+        """
+        command = command.lower()
+        command = command.replace('hearts', 'h').replace('diamonds', 'd').replace('clubs', 'c').replace('spades', 's')
+        command = command.replace(' ', '').replace(',', '').replace('.', '').replace('of', '')
+        cmd_list = []
         while len(command) > 0:
             if command.startswith('10'):
-                commands.append(command[:3])
+                cmd_list.append(command[:3])
                 command = command[3:]
             else:
-                commands.append(command[:2])
+                cmd_list.append(command[:2])
                 command = command[2:]
 
+        # check if card(s) are in hand
         missing_cmd = None
-        if all(self.has_card(missing_cmd:=cmd) for cmd in commands):
-            return commands
-        else:
-            raise ValueError(f"Invalid command: {missing_cmd}. Incorrect format or card is unavailable.")
+        assert all(self.has_card(missing_cmd:=cmd) for cmd in cmd_list
+                   ), f"Invalid command: {missing_cmd}. Incorrect format or card is unavailable."
 
+        # TODO: check if multicard rules are followed
+        # TODO: invert logic of multicard checks
+        if len(cmd_list) == 1:
+            pass
+        elif len(cmd_list) == 2 and (has_ace:= any(cmd[0] == 'a' for cmd in cmd_list)):
+            pass
+        elif sum([card.value for card in cards]) <= 10 and len(set(card.value for card in cards)) == 1:
+            pass
+        else:
+            raise ValueError("Invalid command: Multicard rules not followed.")
+            
+        return cmd_list
+        
     def play_cards(self, commands)->list[Card]:
         """Returns list of cards specified in the commands.
         Removes the cards from the player's hand."""
@@ -179,15 +204,17 @@ class Player:
 
 class RegicideGame:
     def __init__(self, player_names=['a','b']):
-        self.turn = 1
+        self.turn_number = 1
         self.deck = Deck(deck_type='Tavern', shuffle=True)
         self.players = [Player(name=n) for n in player_names]
         self.active_player_index = 0
         self.active_player = self.players[self.active_player_index]
         self.enemies = Deck(deck_type='Castle')
         self.discard = Deck(deck_type='Empty')
+        self.play_area = Deck(deck_type='Empty')
         self.running = True
         self.is_player_turn = True
+        self.game_result = None
         self.setup_game()
 
     def setup_game(self):
@@ -199,45 +226,8 @@ class RegicideGame:
         # Start with the first enemy
         self.next_enemy()
     
-    def next_enemy(self):
-        if self.enemies:
-            self.current_enemy = self.enemies.draw_card()
-            print(f"\nNew enemy: {self.current_enemy} \n(Health: {self.current_enemy.health})\n(Attack: {self.current_enemy.attack})")
-        else:
-            print("Congratulations! You've defeated all enemies!")
-            self.current_enemy = None
-
     def get_enemy_health(self, value):
         return {'J': 20, 'Q': 30, 'K': 40}[value]
-
-    def check_valid_play(self, cards):
-        if len(cards) == 1:
-            return True
-        elif len(cards) == 2 and (has_ace:= any(card.value == 'A' for card in cards)):
-            return True          
-        elif sum([card.value for card in cards]) <= 10 and len(set(card.value for card in cards)) == 1:
-            return True
-            
-        return False
-
-    def play_card(self, card_index):
-        if not self.current_enemy:
-            print("No enemy to attack!")
-            return
-
-        card = self.player.hand[card_index]
-        damage = self.get_card_value(card)
-        
-        print(f"\nYou played {card} for {damage} damage.")
-        self.current_enemy.health -= damage
-        
-        if self.current_enemy.health <= 0:
-            print(f"You defeated {self.current_enemy}!")
-            self.next_enemy()
-        else:
-            print(f"{self.current_enemy} has {self.current_enemy.health} health remaining.")
-
-        self.player.hand.pop(card_index)
 
     def refill_tavern(self, number):
         """Shuffle discard then add specified number of cards from the discard to the bottom of the tavern deck."""
@@ -311,33 +301,40 @@ class RegicideGame:
         if draw_cards:
             self.deal_to_players(cards_value)
 
-        # check if enemy is defeated
-        if self.current_enemy.health <= 0:
-            print(f"You defeated {self.current_enemy}!")
-
-            if self.current_enemy.health == 0:
-                print("Exact damage! Defeated Enemy added to the top of Tavern Deck")
-                self.deck.add_card_on_top(self.current_enemy)
-            else:
-                print("Defeated enemy will go to the discard pile!")
-                self.discard.add_card(self.current_enemy)
-
-            self.next_enemy()
-        else:
-            print(f"{self.current_enemy} has {self.current_enemy.health} health remaining.")
+    def print_game_state(self):
+        print('\n')
+        print(f" Turn {self.turn_number} ".center(20, '='))
+        print(f"Current Enemy:")
+        print(f"{self.current_enemy}".center(20))
+        print(f"(Health: {self.current_enemy.health})".rjust(20))
+        print(f"(Attack: {self.current_enemy.attack})".rjust(20))
+        print()
+        for player in self.players:
+            print(f"{player.name} is holding {len(player.hand)}/{player.hand_limit} cards.")
+        print()
+        print(f"There are {len(self.deck)} cards in the tavern deck.")
+        print(f"There are {len(self.discard)} cards in the discard pile.")
 
     def play_game(self):
         while self.running:
-            print(f"\nTurn {self.turn}")
+            self.print_game_state()
             self.player_turn()
-            if not self.check_victory():
+            # check_enemy_defeated also checks for victory condition
+            player_again = self.check_enemy_defeated()
+            if self.running and not player_again:
                 self.enemy_turn()
-                self.turn += 1
+                self.turn_number += 1
                 self.next_player()
+            
+        self.game_end()
 
-    def check_victory(self):
-        # TODO: create victory conditions
-        return False
+    def game_end(self):
+        if self.game_result == 'Win':
+            print("You won the game!")
+        else:
+            print("You lost the game.")
+        
+        print("Thanks for playing!")
 
     def player_turn(self):
         print()
@@ -368,6 +365,7 @@ class RegicideGame:
 
                 if cmd_list:
                     played_cards = self.active_player.play_cards(cmd_list)
+                    self.play_area.add_card(played_cards)
                     self.attack_enemy(played_cards)
                     
                     self.is_player_turn = False
@@ -378,9 +376,62 @@ class RegicideGame:
         self.active_player = self.players[self.active_player_index]
 
     def enemy_turn(self):
+        """On enemy turn, active player must discard cards to withstand enemy attack."""
+        print(f"\nIt is {self.current_enemy}'s turn.")
+        print(f"{self.active_player.name} must discard cards to withstand {self.current_enemy.attack} damage.")
+
+        print(self.active_player.show_hand())
+
+        valid_play = False
+        while not valid_play:
+            command = input("\ntype card(s) to play them").lower()
+
+            cmd_list = None
+            try:
+                cmd_list = self.active_player.parse_and_check_command(command)
+            except ValueError as e:
+                print(e)
+
+            # TODO: Implement defense turn logic
+
         
         
         self.is_player_turn = True
+
+    def check_enemy_defeated(self):
+        """Checks if the current enemy has been defeated.
+        Updates self.current_enemy, if all enemies are defeated, sets self.running to False and self.game_result to 'Win'.
+        If so, it returns True to allow the player to play again.
+        If not, it returns False to end the player's turn."""
+        if self.current_enemy.health <= 0:
+            print(f"You defeated {self.current_enemy}!")
+
+            if self.current_enemy.health == 0:
+                print("Exact damage! Defeated Enemy added to the top of Tavern Deck")
+                self.deck.add_card_on_top(self.current_enemy)
+            else:
+                print("Defeated enemy will go to the discard pile!")
+                self.discard.add_card(self.current_enemy)
+
+            self.next_enemy()
+            return True
+        else:
+            print(f"{self.current_enemy} has {self.current_enemy.health} health remaining.")
+            return False
+
+    def next_enemy(self):
+        """Draws a new enemy card from the deck.
+        Moves all cards from the play area to the discard pile.
+        If there are no more enemies, self.running = False and self.game_result = 'Win'."""
+        if self.enemies:
+            self.current_enemy = self.enemies.draw_card()
+            print(f"\nNew enemy: {self.current_enemy} \n(Health: {self.current_enemy.health})\n(Attack: {self.current_enemy.attack})")
+        else:
+            print("Congratulations! You've defeated all enemies!")
+            self.running = False
+            self.game_result = 'Win'
+            self.current_enemy = None
+
 
 if __name__ == "__main__":
     game = RegicideGame(player_names=['Alice','Bob'])
