@@ -269,7 +269,7 @@ class RegicideGame:
         """Takes a list of cards, deals damage to enemy and applies suit effects."""
         assert self.current_enemy, "No enemy to attack!"
 
-        cards_value = sum(self.get_card_value(card) for card in cards)
+        cards_value = sum(card.get_card_attack() for card in cards)
 
         # apply suit effect clubs
         double_damage = (
@@ -333,6 +333,7 @@ class RegicideGame:
             if not self.check_victory():
                 self.enemy_turn()
                 self.turn += 1
+                self.next_player()
 
     def check_victory(self):
         # TODO: create victory conditions
@@ -372,7 +373,9 @@ class RegicideGame:
                     self.is_player_turn = False
                     valid_play = True
 
-        self.next_player()
+    def next_player(self):
+        self.active_player_index = (self.active_player_index + 1) % len(self.players)
+        self.active_player = self.players[self.active_player_index]
 
     def enemy_turn(self):
         
