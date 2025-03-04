@@ -4,6 +4,8 @@ class Card:
     def __init__(self, suit, value):
         self.suit = suit
         self.value = value
+        self.health = self.get_card_health()
+        self.attack = self.get_card_attack()
 
     def __str__(self):
         return f"{self.value} of {self.suit}"
@@ -78,7 +80,7 @@ class Deck:
             self.cards = [Card(suit, value) for suit in suits for value in values]
         if deck_type == 'Castle':
             suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-            values = ['J', 'Q', 'K',]
+            values = ['K', 'Q', 'J',]
             for value in values:
                 random.shuffle(suits)
                 for suit in suits:
@@ -102,25 +104,34 @@ class Deck:
         return ', '.join(str(card) for card in self.cards)
 
 class Player:
-    def __init__(self):
+    def __init__(self, name=None, hand_limit=7):
         self.hand = []
+        if name:
+            self.name = name
+        self.hand_limit = hand_limit
+
+    def __str__(self):
+        return f'{self.name}\n{self.show_hand()}'
 
     def draw_from_deck(self, deck, number=1):
         for _ in range(number):
+            if len(self.hand) >= self.hand_limit:
+                print(f'{self.name} is at hand limit of {self.hand_limit}')
+                break
             card = deck.draw_card()
             if card:
                 self.hand.append(card)
-                print(f"Drawn: {card}")
+                print(f"{self.name} has drawn: {card}")
             else:
                 print("No more cards in the deck.")
 
-    def show_hand(self, sorting=None):
+    def show_hand(self, sorting=None)->str:
         self.hand = sorted(self.hand)
 
         if self.hand:
-            print("Your hand:", ", ".join(str(card) for card in self.hand))
+            return "Hand: " + ", ".join(str(card) for card in self.hand)
         else:
-            print("Your hand is empty.")
+            return "Hand is empty."
 
     def has_card(self, command):
         """Checks if the player has a card that matches the command."""
@@ -145,18 +156,22 @@ class Player:
         pass
 
 class RegicideGame:
-    def __init__(self, player_count=2):
+    def __init__(self, player_names=['a','b']):
         self.turn = 0
         self.deck = Deck(deck_type='Tavern', shuffle=True)
-        self.players = [Player() for _ in range(player_count)]
-        self.current_player = 0
+        self.players = [Player(name=n) for n in player_names]
+        self.active_player = self.players[0]
         self.enemies = Deck(deck_type='Castle')
         self.discard = Deck(deck_type='Empty')
+        self.running = True
+        self.is_player_turn = True
         self.setup_game()
 
     def setup_game(self):
         # Draw initial hand
-        self.player.draw_from_deck(self.deck, 7)
+        
+        for player in self.players:
+            player.draw_from_deck(self.deck, 7)
         
         # Start with the first enemy
         self.next_enemy()
@@ -164,8 +179,6 @@ class RegicideGame:
     def next_enemy(self):
         if self.enemies:
             self.current_enemy = self.enemies.draw_card()
-            self.current_enemy.health = self.get_enemy_health(self.current_enemy.value)
-            self.current_enemy.attack = self.get_enemy_attack(self.current_enemy.value)
             print(f"\nNew enemy: {self.current_enemy} \n(Health: {self.current_enemy.health})\n(Attack: {self.current_enemy.attack})")
         else:
             print("Congratulations! You've defeated all enemies!")
@@ -212,40 +225,28 @@ class RegicideGame:
         self.player.hand.pop(card_index)
 
     def play_game(self):
-        while True:
-            command = input("\ntype card(s) to play them, 'yield' to not attack, or 'quit' to quit: ").lower()
-            print("\n")
-            
-            if command == 'quit':
-                print("Thanks for playing!")
-                break
-            elif command == 'yield':
-                print("You chose not to attack this turn.")
-                self.enemy_attack()
-            elif self.player.can_play(command):
-                cards = self.player.get_cards(command)
-            
-            if command == 'p' or command == 'play':
-                if not self.player.hand:
-                    print("Your hand is empty. Draw a card first.")
-                    continue
+        while self.running:
+            while self.is_player_turn:
+                print()
+                print(f'It is {self.active_player.name}\'s turn')
+                print(self.active_player.show_hand())
+                command = input("\ntype card(s) to play them, 'yield' to not attack, or 'quit' to quit: ").lower()
+                print("\n")
                 
-                while True:
-                    try:
-                        self.player.show_hand()
-                        card_index = int(input(f"Which card do you want to play? (0-{len(self.player.hand)-1}): "))
-                        print("\n \n")
-                        if 0 <= card_index < len(self.player.hand):
-                            self.play_card(card_index)
-                            break
-                        else:
-                            print("Invalid card index. Try again.")
-                    except ValueError:
-                        print("Please enter a valid number.")
-
-            else:
-                print("Invalid command.")
+                if command == 'quit':
+                    print("Thanks for playing!")
+                    self.running = False
+                    
+                elif command == 'yield':
+                    print("You chose not to attack this turn.")
+                    self.enemy_attack()
+                elif self.active_player.can_play(command):
+                    cards = self.player.get_cards(command)
+                else:
+                    print("Invalid command.")
+            while not self.is_player_turn:
+                pass
 
 if __name__ == "__main__":
-    game = RegicideGame()
+    game = RegicideGame(player_names=['Alice','Bob'])
     game.play_game()
