@@ -1,135 +1,4 @@
-import random
-
-class Card:
-    def __init__(self, suit, value):
-        self.suit = suit
-        self.value = value
-        self.health = self.get_card_health()
-        self.attack = self.get_card_attack()
-
-    def __str__(self):
-        return f"{self.value} of {self.suit}"
-
-    def __lt__(self, other, sort_type='suit'):
-        # Define the order of suits
-        suit_order = {'Spades': 0, 'Clubs': 1, 'Hearts': 2, 'Diamonds': 3}
-        
-        # Define the order of values
-        value_order = {'K': 13, 'Q': 12, 'J': 11, '10': 10, '9': 9, '8': 8, 
-                       '7': 7, '6': 6, '5': 5, '4': 4, '3': 3, '2': 2, 'A': 1}
-
-        if sort_type == 'suit':
-            if self.suit != other.suit:
-                return suit_order[self.suit] < suit_order[other.suit]
-
-        return value_order[self.value] < value_order[other.value]
-    
-    def get_card_health(self)->int:
-        if self.value == 'J':
-            return 20
-        elif self.value == 'Q':
-            return 30
-        elif self.value == 'K':
-            return 40
-        else:
-            return 0
-    
-    def get_card_attack(self)->int:
-        if self.value == 'J':
-            return 10
-        elif self.value == 'Q':
-            return 15
-        elif self.value == 'K':
-            return 20
-        elif self.value == 'A':
-            return 1
-        else:
-            return int(self.value)
-        
-    @staticmethod
-    def get_cmd_attack(command):
-        """assumes command is properly formatted"""
-        cmd_value = command[:-1].lower()
-        match cmd_value:
-            case 'j':
-                return 10
-            case 'q':
-                return 15
-            case 'k':
-                return 20
-            case 'a':
-                return 1
-            case _:
-                return int(cmd_value)
-        
-    def check_card_command(self, command:str)->bool:
-        command = command.upper()
-        if not command.startswith(self.value):
-            return False
-        command = command.strip(self.value)
-        if len(command) == 1 and command.lower() == self.suit[0].lower():
-            return True
-        if command.lower() == self.suit.lower():
-            return True
-
-        return False
-
-class Deck:
-    def __init__(self, deck_type:str='Normal', shuffle:bool=True):
-        """
-        Create a deck of cards based on the specified type.
-
-        Parameters:
-        deck_type (str): The type of deck to create. Options are:
-        - 'Normal': Standard 52-card deck.
-        - 'Tavern': 40-card deck with values 2-10 and A.
-        - 'Castle': 12-card deck with J, Q, K.  
-        - 'Empty': An empty deck.
-        """
-        self.cards = []
-        if deck_type == 'Normal':
-            suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-            values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-            self.cards = [Card(suit, value) for suit in suits for value in values]
-        if deck_type == 'Tavern':
-            suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-            values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'A']
-            self.cards = [Card(suit, value) for suit in suits for value in values]
-        if deck_type == 'Castle':
-            suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
-            values = ['K', 'Q', 'J',]
-            for value in values:
-                random.shuffle(suits)
-                for suit in suits:
-                    self.cards.append(Card(suit, value))
-            shuffle = False
-        if deck_type == 'Empty':
-            self.cards = []
-        if shuffle:
-            self.shuffle()
-
-    def __len__(self):
-        return len(self.cards)
-
-    def draw_card(self):
-        return self.cards.pop() if self.cards else None
-    
-    def add_card(self, card:Card | list[Card]):
-        """Adds a card or list of cards to the deck."""
-        if isinstance(card, list):
-            for c in card:
-                self.cards.append(c)
-        elif isinstance(card, Card):
-            self.cards.append(card)
-
-    def add_card_on_top(self, card):
-        self.cards.insert(0, card) 
-
-    def shuffle(self):
-        random.shuffle(self.cards)
-
-    def __str__(self):
-        return ', '.join(str(card) for card in self.cards)
+from materials import Card, Deck, Card_Commands
 
 class Player:
     def __init__(self, name:str=None, hand_limit:int=7):
@@ -141,7 +10,7 @@ class Player:
     def __str__(self):
         return f'{self.name}\n{self.show_hand()}'
 
-    def draw_from_deck(self, deck, number=1)->bool:
+    def draw_from_deck(self, deck:Deck, number:int=1)->bool:
         """Draws a specified number of cards from the deck and adds them to the player's hand.
         If the player doesn't draw number cards, due to hand limit or empty deck, returns False."""
         for _ in range(number):
@@ -166,6 +35,9 @@ class Player:
         else:
             return "Hand is empty."
 
+    def count_cards_in_hand(self)->int:
+        return len(self.hand)
+
     @staticmethod
     def parse_command(command:str)->list[str]:
         command = command.lower()
@@ -187,6 +59,9 @@ class Player:
         """Checks if the player has a card that matches the command."""
         return any(card.check_card_command(command) for card in self.hand)
 
+    def valid_cmd_list(self, cmd_list):
+        return all(self.has_card(cmd) for cmd in cmd_list)
+
     def assert_valid_cmd_list(self, cmd_list):
         """
         Asserts that all commands in cmd_list match a card in Player's hand.
@@ -194,9 +69,10 @@ class Player:
         missing_cmd = None
         assert all(self.has_card(missing_cmd:=cmd) for cmd in cmd_list
                    ), f"Invalid command: {missing_cmd}. Incorrect format or card is unavailable."
+        return True
 
     def validate_attack_command(self, command:str)->list[str]:
-        """Takes a command str and parses it.
+        """Takes a command str and parses it into a list of str.
         Asserts each command is for a card in the player's hand.
         Asserts the command follows attack multicard rules.
         """
@@ -223,9 +99,9 @@ class Player:
         return cmd_list
 
     def validate_defend_command(self, command:str, incoming_damage:int)->list[str]:
-        """Takes a command str and parses it.
+        """Takes a command str and parses it into a list of str.
         Asserts each command is for a card in the player's hand.
-        Asserts total value of commands is greater than incoming_damage
+        Asserts total value of commands is greater than incoming_damage.
         """
         cmd_list = Player.parse_command(command)
 
@@ -244,7 +120,7 @@ class Player:
         max_def = sum([card.attack for card in self.hand])
         return max_def >= incoming_damage
         
-    def play_cards(self, commands)->list[Card]:
+    def play_cards(self:list[str], commands)->list[Card]:
         """Returns list of cards specified in the commands.
         Removes the cards from the player's hand."""
         cards = []
@@ -256,6 +132,12 @@ class Player:
                     break
 
         return cards
+    
+    def get_bool_list_cards(self)->list[bool]:
+        bool_list = [False for _ in range(52)]
+        for card in self.hand:
+            bool_list[card.get_int_value()] = True
+        return bool_list
 
 class RegicideGame:
     def __init__(self, player_names=['a','b']):
@@ -267,6 +149,7 @@ class RegicideGame:
         self.enemies = Deck(deck_type='Castle')
         self.discard = Deck(deck_type='Empty')
         self.play_area = Deck(deck_type='Empty')
+        self.is_player_turn = True
         self.running = True
         self.game_result = None
         self.setup_game()
@@ -366,7 +249,7 @@ class RegicideGame:
         print()
         max_name_len = max(len(player.name) for player in self.players)
         for player in self.players:
-            print(player.name.rjust(max_name_len), f"is holding {len(player.hand)}/{player.hand_limit} cards.")
+            print(player.name.rjust(max_name_len), f"is holding {player.count_cards_in_hand()}/{player.hand_limit} cards.")
         print()
         print(f"There are {len(self.deck)} cards in the tavern deck.")
         print(f"There are {len(self.discard)} cards in the discard pile.")
@@ -386,6 +269,7 @@ class RegicideGame:
         self.game_end()
 
     def player_turn(self):
+        self.is_player_turn = True
         print()
         print(f'It is {self.active_player.name}\'s turn')
         print(self.active_player.show_hand())
@@ -426,6 +310,7 @@ class RegicideGame:
 
     def enemy_turn(self):
         """On enemy turn, active player must discard cards to withstand enemy attack."""
+        self.is_player_turn = False
         print(f"\nIt is {self.current_enemy}'s turn.")
         print(f"{self.active_player.name} must discard cards to withstand {self.current_enemy.attack} damage.")
 
