@@ -118,16 +118,16 @@ def select_action(state):
         math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
     if sample > eps_threshold:
-        print('nn move')
+        # print('nn move')
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
             return policy_net(state).max(1).indices.view(1, 1)
     else:
-        print('random move')
-        int
-        return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
+        # print('random move')
+        rand_index = random.randint(0,env.action_space-1)
+        return torch.tensor([[rand_index]], device=device, dtype=torch.long)
 
 episode_final_score = []
 
@@ -179,16 +179,7 @@ def optimize_model():
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    print(state_batch.size())
-    # print(state_batch)
-    print(action_batch.size())
-    print('attempting policy_net gather')
-    temp = policy_net(state_batch)
-    # print(temp.size())
-    action_batch = action_batch.type(torch.int64)
-    state_action_values = temp.gather(1, action_batch)
-    print('policy_net gather was successful')
-    exit()
+    state_action_values = policy_net(state_batch).gather(1, action_batch)
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -224,8 +215,8 @@ for i_episode in range(num_episodes):
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     for t in count():
         action = select_action(state)
-        usable_action = convert_torch_to_action_list(action,env.active_player)
-        observation, reward, done = env.step(usable_action)
+        # usable_action = convert_torch_to_action_list(action,env.active_player)
+        observation, reward, done = env.step(action)
         reward = torch.tensor([reward], device=device)
 
         next_state = None
@@ -251,6 +242,7 @@ for i_episode in range(num_episodes):
 
         if done:
             print(f'Game #{i_episode} has ended')
+            exit()
             # TODO: get game final score
             # episode_final_score.append(game_score)
             # plot_durations()

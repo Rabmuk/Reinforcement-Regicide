@@ -13,7 +13,7 @@ class RegicideGame_AI(RegicideGame):
 
     def __init__(self, player_names=['ai_a','ai_b']):
         self.player_names = player_names
-        self.action_space = Discrete(Card_Commands.int_to_cmd)
+        self.action_space = len(Card_Commands.int_to_cmd)
         super().__init__(player_names)
 
     def get_state(self):
@@ -38,10 +38,10 @@ class RegicideGame_AI(RegicideGame):
         super().__init__(self.player_names)
         return self.get_state(), 'Info'
     
-    def step(self, int_list:list[int]):
+    def step(self, action_int:int):
         reward = 0
 
-        command = Card_Commands.int_list_to_cmd(int_list)
+        command = Card_Commands.int_to_cmd[action_int]
 
         # player attacks
         if self.is_player_turn:
