@@ -13,7 +13,7 @@ class RegicideGame_AI(RegicideGame):
 
     def __init__(self, player_names=['ai_a','ai_b']):
         self.player_names = player_names
-        self.action_space = len(Card_Commands.int_to_cmd)
+        self.action_space = Discrete(Card_Commands.int_to_cmd)
         super().__init__(player_names)
 
     def get_state(self):
@@ -70,7 +70,9 @@ class RegicideGame_AI(RegicideGame):
         # player defends
         else:
             try:
-                cmd_list = self.active_player.validate_defend_command(command)
+                cmd_list = self.active_player.validate_defend_command(
+                    command, self.current_enemy.attack
+                    )
                 played_cards = self.active_player.play_cards(cmd_list)
                 self.discard.add_card(played_cards)
                 self.next_player()

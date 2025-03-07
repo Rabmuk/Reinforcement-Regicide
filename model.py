@@ -97,18 +97,19 @@ memory = ReplayMemory(10000)
 
 steps_done = 0
 
-def convert_torch_to_action_list(torch:torch, active_player:Player)->list[int]:
-    for k in range(4,1,-1):
-        topk = torch.topk(k)
-        cmd_list = [
-            Card_Commands.int_to_cmd[index]
-            for index in topk.indices
-            ]
+# def convert_torch_to_action_list(torch:torch, active_player:Player)->list[int]:
+#     torch = torch[0]
+#     for k in range(4,1,-1):
+#         topk = torch.topk(k)
+#         cmd_list = [
+#             Card_Commands.int_to_cmd[index]
+#             for index in topk.indices
+#             ]
         
-        if active_player.valid_cmd_list(cmd_list):
-            return topk.indices
+#         if active_player.valid_cmd_list(cmd_list):
+#             return topk.indices
         
-    return torch.topk(1).indices
+#     return torch.topk(1).indices
     
 def select_action(state):
     global steps_done
@@ -119,11 +120,14 @@ def select_action(state):
     if sample > eps_threshold:
         print('nn move')
         with torch.no_grad():
-            return convert_torch_to_action_list(policy_net(state)[0], env.active_player)
+            # t.max(1) will return the largest column value of each row.
+            # second column on max result is index of where max element was
+            # found, so we pick action with the larger expected reward.
+            return policy_net(state).max(1).indices.view(1, 1)
     else:
         print('random move')
-        rnd_values = torch.randn(env.action_space)
-        return convert_torch_to_action_list(rnd_values, env.active_player)
+        int
+        return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
 
 episode_final_score = []
 
@@ -167,6 +171,7 @@ def optimize_model():
                                           batch.next_state)), device=device, dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
                                                 if s is not None])
+                                    
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
@@ -174,7 +179,16 @@ def optimize_model():
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch)
+    print(state_batch.size())
+    # print(state_batch)
+    print(action_batch.size())
+    print('attempting policy_net gather')
+    temp = policy_net(state_batch)
+    # print(temp.size())
+    action_batch = action_batch.type(torch.int64)
+    state_action_values = temp.gather(1, action_batch)
+    print('policy_net gather was successful')
+    exit()
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -210,7 +224,8 @@ for i_episode in range(num_episodes):
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     for t in count():
         action = select_action(state)
-        observation, reward, done = env.step(action)
+        usable_action = convert_torch_to_action_list(action,env.active_player)
+        observation, reward, done = env.step(usable_action)
         reward = torch.tensor([reward], device=device)
 
         next_state = None
