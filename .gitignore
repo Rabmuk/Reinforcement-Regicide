@@ -1,2 +1,3 @@
 testing.py
 ./torch_venv
+__pycache__/
