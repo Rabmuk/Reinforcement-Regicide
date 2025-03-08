@@ -241,13 +241,15 @@ for i_episode in range(1, num_episodes+1):
         if t % 100 == 0:
             print (f'Episode: {i_episode} Cycle {t}')
 
-        if t > 10000:
+        if t > 20000:
             info = state_to_str(state)
             with open(GAME_LOG_PATH, 'a') as file:
-                file.writelines('')
-                file.writelines(f'Abondoning episode because t limit reached. t = {t}')
-                file.writelines(str(state))
-                file.writelines(info)
+                file.write('\n\n')
+                file.write(f'Abondoning episode because t limit reached. t = {t}')
+                file.write('\n')
+                file.write(str(state))
+                file.write('\n')
+                file.write(info)
             break
 
         action = select_action(state)
@@ -279,7 +281,7 @@ for i_episode in range(1, num_episodes+1):
             print(f'Game #{i_episode} has ended')
             # TODO: get game final score
             episode_final_score.append(
-                f'{env.game_result} castle:{len(env.enemies)}'
+                ({env.game_result}, {len(env.enemies)})
                 )
             # plot_durations()
             break
@@ -287,9 +289,25 @@ for i_episode in range(1, num_episodes+1):
 print('Complete')
 # plot_durations(show_result=True)
 print(episode_final_score)
-with open(GAME_LOG_PATH, 'a') as file:
-    file.writelines('')
-    file.writelines(str(episode_final_score))
+with open(FINAL_SCORE_LOG_PATH, 'a') as file:
+    file.write('\n\n')
+    file.write(str(episode_final_score))
+    win_line = "Wins " + str(sum([
+        row[0] == 'Win'
+        for row in episode_final_score
+    ]))
+    file.write('\n')
+    file.write(win_line)
+    print([
+        int(row[1])
+        for row in episode_final_score
+    ])
+    best_score = "Best " + str(min([
+        int(row[1])
+        for row in episode_final_score
+    ]))
+    file.write('\n')
+    file.write(best_score)
 
 print('Saving Model')
 torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
