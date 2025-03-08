@@ -15,6 +15,11 @@ from materials import Card_Commands
 from regicideAI import RegicideGame_AI
 from regicide import Player
 
+LOAD_MODEL = True
+MODEL_PKL_PATH = './model_state.pkl'
+GAME_LOG_PATH = './games.log'
+FINAL_SCORE_LOG_PATH = './final_scores.log'
+
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
 # GAMMA is the discount factor as mentioned in the previous section
 # EPS_START is the starting value of epsilon
@@ -89,8 +94,17 @@ class ReplayMemory(object):
         return len(self.memory)
 
 policy_net = DQN(n_observations, n_actions).to(device)
+if LOAD_MODEL:
+    try:
+        policy_net.load_state_dict(torch.load(MODEL_PKL_PATH, weights_only=True))
+        policy_net.eval()
+    except FileNotFoundError as e:
+        print('Model not loaded, file could not be found')
+
 target_net = DQN(n_observations, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
+
+
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 memory = ReplayMemory(10000)
@@ -219,9 +233,9 @@ def optimize_model():
 
 # select episode limit based on GPU availability
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 5
+    num_episodes = 10
 else:
-    num_episodes = 5
+    num_episodes = 10
 
 for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
@@ -233,7 +247,7 @@ for i_episode in range(1, num_episodes+1):
 
         if t > 10000:
             info = state_to_str(state)
-            with open('./game_log.log', 'a') as file:
+            with open(GAME_LOG_PATH, 'a') as file:
                 file.writelines('')
                 file.writelines(f'Abondoning episode because t limit reached. t = {t}')
                 file.writelines(str(state))
@@ -275,7 +289,10 @@ for i_episode in range(1, num_episodes+1):
 print('Complete')
 # plot_durations(show_result=True)
 print(episode_final_score)
+with open(GAME_LOG_PATH, 'a') as file:
+    file.writelines(str(episode_final_score))
+
 print('Saving Model')
-torch.save(policy_net.state_dict(), './model_state.pkl')
+torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 # plt.ioff()
 # plt.show()
