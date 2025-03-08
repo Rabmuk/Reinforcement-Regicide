@@ -231,11 +231,7 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
-# select episode limit based on GPU availability
-if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 10
-else:
-    num_episodes = 10
+num_episodes = 50
 
 for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
@@ -282,7 +278,9 @@ for i_episode in range(1, num_episodes+1):
         if done:
             print(f'Game #{i_episode} has ended')
             # TODO: get game final score
-            episode_final_score.append(11-len(env.enemies))
+            episode_final_score.append(
+                f'{env.game_result} castle:{len(env.enemies)}'
+                )
             # plot_durations()
             break
 
@@ -290,6 +288,7 @@ print('Complete')
 # plot_durations(show_result=True)
 print(episode_final_score)
 with open(GAME_LOG_PATH, 'a') as file:
+    file.writelines('')
     file.writelines(str(episode_final_score))
 
 print('Saving Model')
