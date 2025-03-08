@@ -94,6 +94,7 @@ class RegicideGame_AI(RegicideGame):
             self.current_enemy.health,
             self.current_enemy.attack,
             self.is_player_turn,
+            self.active_player_index,
             ]
         game_state += [player.count_cards_in_hand() for player in self.players]
         game_state += self.active_player.get_hand_int_values()
@@ -150,7 +151,6 @@ class RegicideGame_AI(RegicideGame):
                 # self.attack_enemy(played_cards)
             except AssertionError as e:
                 # return reward of -1 because command was invalid
-                print('invalid defense')
                 reward = -1
 
         # make any forced moved (like player without cards needing to yield)

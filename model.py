@@ -26,7 +26,7 @@ BATCH_SIZE = 128
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 1000
+EPS_DECAY = 10000
 TAU = 0.005
 LR = 1e-4
 
@@ -156,6 +156,20 @@ def plot_durations(show_result=False):
     #     else:
     #         display.display(plt.gcf())
 
+def state_to_str(state)->str:
+    state = state[0].int()
+    labels = ['Deck','Discard','Enemies','Current E','E HP','E Att','is_p_turn','p_index']
+    for player in env.players:
+        labels.append(player.name + ' cc')
+    for i in range(1,env.active_player.hand_limit+1):
+        labels.append(f'card {i}')
+    return_list = [
+        f'{title}:{state[index]}'
+        for index, title in enumerate(labels)
+    ]
+
+    return ', '.join(return_list)
+
 def optimize_model():
     if len(memory) < BATCH_SIZE:
         return
@@ -205,9 +219,9 @@ def optimize_model():
 
 # select episode limit based on GPU availability
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 50
+    num_episodes = 5
 else:
-    num_episodes = 50
+    num_episodes = 5
 
 for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
@@ -218,8 +232,13 @@ for i_episode in range(1, num_episodes+1):
             print (f'Episode: {i_episode} Cycle {t}')
 
         if t > 10000:
-            print (state)
-            exit()
+            info = state_to_str(state)
+            with open('./game_log.log', 'a') as file:
+                file.writelines('')
+                file.writelines(f'Abondoning episode because t limit reached. t = {t}')
+                file.writelines(str(state))
+                file.writelines(info)
+            break
 
         action = select_action(state)
         observation, reward, done = env.step(action)
@@ -248,7 +267,6 @@ for i_episode in range(1, num_episodes+1):
 
         if done:
             print(f'Game #{i_episode} has ended')
-            # exit()
             # TODO: get game final score
             episode_final_score.append(11-len(env.enemies))
             # plot_durations()
@@ -257,5 +275,7 @@ for i_episode in range(1, num_episodes+1):
 print('Complete')
 # plot_durations(show_result=True)
 print(episode_final_score)
+print('Saving Model')
+torch.save(policy_net.state_dict(), './model_state.pkl')
 # plt.ioff()
 # plt.show()

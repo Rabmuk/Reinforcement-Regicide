@@ -1,3 +1,4 @@
 testing.py
 ./torch_venv
 __pycache__/
+game_log.log
