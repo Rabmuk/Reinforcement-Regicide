@@ -1,3 +1,4 @@
+import itertools
 from materials import Card, Deck, Card_Commands
 from regicide import RegicideGame
 from enum import Enum
@@ -15,6 +16,25 @@ class RegicideGame_AI(RegicideGame):
         self.player_names = player_names
         self.action_space = len(Card_Commands.int_to_cmd)
         super().__init__(player_names)
+        self.build_action_space()
+
+    def build_action_space(self):
+        num_str = ''.join(
+            map(str,list(range(1,self.active_player.hand_limit + 1)))
+            )
+        all_actions = []
+        all_actions.append('yield')
+        for k in range(1,len(num_str)+1):
+            comb = itertools.combinations(num_str, k)
+            for c in comb:
+                all_actions.append( ''.join(c))
+
+        self.int_to_icmd = all_actions
+        self.icmd_to_int = {
+            icmd:i
+            for i, icmd in enumerate(self.int_to_icmd)
+        }
+        self.action_space = len(all_actions)
 
     def get_state(self):
         """
