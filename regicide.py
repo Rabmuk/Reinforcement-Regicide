@@ -133,11 +133,34 @@ class Player:
 
         return cards
     
-    def get_bool_list_cards(self)->list[bool]:
-        bool_list = [False for _ in range(52)]
-        for card in self.hand:
-            bool_list[card.get_int_value()] = True
-        return bool_list
+    def get_hand_int_values(self)->list[int]:
+        self.hand.sort() # always give cards in sorted order
+        int_list = [
+            card.get_int_value()
+            for card in self.hand
+        ]
+        while len(int_list) < self.hand_limit:
+            int_list.append(-1)
+
+        return int_list
+    
+    def icmd_to_command(self, icmd:str)->str:
+        """
+        Turns a string of numbers, which correspond to indexes of held cards, into a card string command.
+        If icmd tries to access a card that doesn't exist an IndexError will occur
+        """
+        if icmd == 'yield':
+            return 'yield'
+        
+        self.hand.sort() # hand should already be sorted, sorting again just in case
+        cmd_list = [
+            self.hand[int(index)-1].get_cmd()
+            for index in icmd
+        ]
+        
+        command = ''.join(cmd_list)
+        return command
+
 
 class RegicideGame:
     def __init__(self, player_names=['a','b']):

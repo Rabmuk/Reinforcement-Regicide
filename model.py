@@ -205,17 +205,23 @@ def optimize_model():
 
 # select episode limit based on GPU availability
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 600
+    num_episodes = 50
 else:
     num_episodes = 50
 
-for i_episode in range(num_episodes):
+for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     for t in count():
+        if t % 100 == 0:
+            print (f'Episode: {i_episode} Cycle {t}')
+
+        if t > 10000:
+            print (state)
+            exit()
+
         action = select_action(state)
-        # usable_action = convert_torch_to_action_list(action,env.active_player)
         observation, reward, done = env.step(action)
         reward = torch.tensor([reward], device=device)
 
@@ -242,13 +248,14 @@ for i_episode in range(num_episodes):
 
         if done:
             print(f'Game #{i_episode} has ended')
-            exit()
+            # exit()
             # TODO: get game final score
-            # episode_final_score.append(game_score)
+            episode_final_score.append(12-len(env.enemies))
             # plot_durations()
             break
 
 print('Complete')
 # plot_durations(show_result=True)
+print(episode_final_score)
 # plt.ioff()
 # plt.show()
