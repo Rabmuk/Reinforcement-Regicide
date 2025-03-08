@@ -76,7 +76,7 @@ class RegicideGame_AI(RegicideGame):
         If no players have any cards, self.running = False and self.game_result = "Lose".
         This is important to check if enemy attack is 0 but all players are out of cards.
         """
-        if sum([len(p.hand) for p in self.players]):
+        if sum([len(p.hand) for p in self.players]) == 0:
             print('All players have run out of cards')
             self.running = False
             self.game_result = "Lose"

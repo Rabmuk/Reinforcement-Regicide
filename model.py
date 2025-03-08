@@ -250,7 +250,7 @@ for i_episode in range(1, num_episodes+1):
             print(f'Game #{i_episode} has ended')
             # exit()
             # TODO: get game final score
-            episode_final_score.append(12-len(env.enemies))
+            episode_final_score.append(11-len(env.enemies))
             # plot_durations()
             break
 
