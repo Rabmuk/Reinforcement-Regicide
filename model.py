@@ -16,10 +16,12 @@ from regicideAI import RegicideGame_AI
 from regicide import Player
 
 LOAD_MODEL = True
-num_episodes = 300
-CYCLE_LIMIT = 20_000
+num_episodes = 200
+CYCLE_LIMIT = 15_000
+MAX_MEM = 20_000
+INVALID_BACKOFF_FACTOR = 1.1
 
-MODEL_PKL_PATH = './model_state.pkl'
+MODEL_PKL_PATH = './model_3_layer.pkl'
 GAME_LOG_PATH = './games.log'
 FINAL_SCORE_LOG_PATH = './final_scores.log'
 
@@ -30,11 +32,11 @@ FINAL_SCORE_LOG_PATH = './final_scores.log'
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 128
-GAMMA = 0.99
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 10000
+BATCH_SIZE = 256
+GAMMA = 0.8
+EPS_START = 0.2
+EPS_END = 0.01
+EPS_DECAY = 10_000
 TAU = 0.005
 LR = 1e-4
 
@@ -62,6 +64,7 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.layer1 = nn.Linear(n_observations, 128)
         self.layer2 = nn.Linear(128, 128)
+        self.layer2_5 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
 
     # Called with either one element to determine next action, or a batch
@@ -69,6 +72,7 @@ class DQN(nn.Module):
     def forward(self, x):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
+        x = F.relu(self.layer2_5(x))
         return self.layer3(x)
 
 
@@ -141,13 +145,22 @@ def log_final_scores():
             int(row[1])
             for row in episode_final_score
         ])
-        avg_score = "Average " + str(sum_ / len(episode_final_score))
+        avg_score = f"Avg Enemies Remaining {sum_ / len(episode_final_score):.2f}"
+        file.write(avg_score)
+
+        # Avg cycles
+        file.write('\n')
+        sum_ = sum([
+            int(row[2])
+            for row in episode_final_score
+        ])
+        avg_score = f"Average Cycles {sum_ / len(episode_final_score):.2f}"
         file.write(avg_score)
 
     episode_final_score = []
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-memory = ReplayMemory(10000)
+memory = ReplayMemory(MAX_MEM)
 
 steps_done = 0
     
@@ -231,11 +244,12 @@ def optimize_model():
     optimizer.step()
 
 for i_episode in range(1, num_episodes+1):
+    print(f'Starting Episode #{i_episode}')
     # Initialize the environment and get its state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     for t in count():
-        if t % 100 == 0:
+        if t % 500 == 0:
             print (f'Episode: {i_episode} Cycle {t}')
 
         if t > CYCLE_LIMIT:
@@ -250,7 +264,12 @@ for i_episode in range(1, num_episodes+1):
             break
 
         action = select_action(state)
-        observation, reward, done = env.step(action)
+        observation, reward, done, invalid_action = env.step(action)
+
+        if invalid_action and steps_done > 100:
+            steps_done /= INVALID_BACKOFF_FACTOR
+            steps_done = int(steps_done)
+        
         reward = torch.tensor([reward], device=device)
 
         next_state = None
@@ -277,7 +296,7 @@ for i_episode in range(1, num_episodes+1):
         if done:
             print(f'Game #{i_episode} has ended')
             episode_final_score.append(
-                (env.game_result, len(env.enemies))
+                (env.game_result, len(env.enemies), t)
                 )
             break
 

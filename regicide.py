@@ -15,12 +15,12 @@ class Player:
         If the player doesn't draw number cards, due to hand limit or empty deck, returns False."""
         for _ in range(number):
             if len(self.hand) >= self.hand_limit:
-                print(f'{self.name} is at hand limit of {self.hand_limit}')
+                # print(f'{self.name} is at hand limit of {self.hand_limit}')
                 return False
             card = deck.draw_card()
             if card:
                 self.hand.append(card)
-                print(f"{self.name} has drawn: {card}")
+                # print(f"{self.name} has drawn: {card}")
             else:
                 print("No more cards in the deck.")
                 return False
@@ -36,6 +36,9 @@ class Player:
             return "Hand is empty."
 
     def count_cards_in_hand(self)->int:
+        """
+        Returns the len of self.hand
+        """
         return len(self.hand)
 
     @staticmethod
@@ -405,7 +408,7 @@ class RegicideGame:
         If there are no more enemies, self.running = False and self.game_result = 'Win'."""
         if self.enemies:
             while card := self.play_area.draw_card():
-                print(f'moving {card} from play area to discard')
+                # print(f'moving {card} from play area to discard')
                 self.discard.add_card(card)
             self.current_enemy = self.enemies.draw_card()
             print(f"\nNew enemy: {self.current_enemy} \n(Health: {self.current_enemy.health})\n(Attack: {self.current_enemy.attack})")

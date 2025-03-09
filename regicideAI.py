@@ -36,14 +36,29 @@ class RegicideGame_AI(RegicideGame):
         }
         self.action_space = len(all_actions)
 
-    def check_auto_yield(self)->bool:
+    def check_auto_attack(self)->bool:
         """
         If player has no cards in hand, they're forced to yield.
         Returns True if yield occurs, False if no yield
         """
+        if not self.is_player_turn:
+            return False
+        
         if len(self.active_player.hand) == 0:
             print('Auto yield')
             self.is_player_turn = False
+            return True
+        # if active player only has 1 card and no other players have cards, play final card
+        elif self.active_player.count_cards_in_hand() == 1 and \
+            sum([player.count_cards_in_hand() for player in self.players]) == 1:
+            print('Attack with last card')
+            # play last card
+            played_cards = self.active_player.play_all_cards()
+            self.play_area.add_card(played_cards)
+            self.attack_enemy(played_cards)
+            self.is_player_turn = False
+            if self.check_enemy_defeated():
+                self.is_player_turn = True
             return True
         return False
 
@@ -115,15 +130,17 @@ class RegicideGame_AI(RegicideGame):
     
     def step(self, action_int:int):
         reward = 0
+        invalid_a = False
 
         icmd = self.int_to_icmd[action_int]
         try:
             command = self.active_player.icmd_to_command(icmd)
         except IndexError as e:
             # trying to play a card that doesn't exist
-            reward = -1
+            reward = -10
             done = False
-            return self.get_state(), reward, done
+            invalid_a = True
+            return self.get_state(), reward, done, invalid_a
 
         # player attacks
         if self.is_player_turn:
@@ -140,11 +157,12 @@ class RegicideGame_AI(RegicideGame):
                     reward = 1 # successfull attack gives 1 point
                     self.is_player_turn = False
                     if self.check_enemy_defeated():
-                        reward = 11
+                        reward = 50
                         self.is_player_turn = True
                 except AssertionError as e:
                     # return reward of -1 because command was invalid
-                    reward = -1
+                    reward = -10
+                    invalid_a = True
             
         # player defends
         else:
@@ -159,13 +177,15 @@ class RegicideGame_AI(RegicideGame):
                 # self.attack_enemy(played_cards)
             except AssertionError as e:
                 # return reward of -1 because command was invalid
-                reward = -1
+                reward = -10
+                invalid_a = True
 
         # make any forced moved (like player without cards needing to yield)
         self.check_no_cards()
         # cycles past any players without cards, checking if they can survive and attack
-        while self.running and self.check_auto_yield():
+        while self.running and self.check_auto_attack():
             self.check_auto_defend()
+            self.check_no_cards()
         # one last check of auto defend
         if self.running:
             self.check_auto_defend()
@@ -173,10 +193,10 @@ class RegicideGame_AI(RegicideGame):
         done = not self.running
         if done:
             if self.game_result == 'Win':
-                reward = 100
+                reward = 1000
             elif self.game_result == 'Lose':
-                reward = -100
+                reward = -1000
             else:
                 raise ValueError('If self.running == False, self.game_result must be "Win" or "Lose"')
 
-        return self.get_state(), reward, done
+        return self.get_state(), reward, done, invalid_a

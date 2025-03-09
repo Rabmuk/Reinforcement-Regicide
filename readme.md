@@ -36,6 +36,14 @@ like:
 
 there are 127 combinations of cards that can be played from a 7 card hand. when looking at only 1st card or 1st and 2nd card or only 2nd card ...
 
+## 3rd pivot
+
+extra nn layer and starting to tune hyper parameters like learning rate
+
+## Randomness backoff
+
+Idea where if an invalid move is played to increase randomness
+
 ## insights
 
 Because you can play multiple cards at once there's not a descrete actions space. If the most favored card can be played, then also check the second most favored action.
