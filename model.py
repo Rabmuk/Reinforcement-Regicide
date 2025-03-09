@@ -104,7 +104,9 @@ if LOAD_MODEL:
 target_net = DQN(n_observations, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
-
+def save_model_to_file():
+    print('Saving Model')
+    torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 memory = ReplayMemory(10000)
@@ -231,7 +233,7 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
-num_episodes = 50
+num_episodes = 200
 
 for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
@@ -286,6 +288,9 @@ for i_episode in range(1, num_episodes+1):
             # plot_durations()
             break
 
+    if i_episode > 5 and i_episode % 20 == 0:
+        save_model_to_file()
+
 print('Complete')
 # plot_durations(show_result=True)
 print(episode_final_score)
@@ -308,8 +313,5 @@ with open(FINAL_SCORE_LOG_PATH, 'a') as file:
     ]))
     file.write('\n')
     file.write(best_score)
-
-print('Saving Model')
-torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 # plt.ioff()
 # plt.show()
