@@ -113,14 +113,20 @@ class Player:
 
         return cmd_list
 
+    def calc_max_defense(self)->int:
+        """
+        Sums total defense of all cards
+        """
+        return sum([card.attack for card in self.hand])
+
     def can_survive_attack(self, incoming_damage:int)->bool:
         """
         calculated maximum defense and compares to incoming damage
         """
-        max_def = sum([card.attack for card in self.hand])
+        max_def = self.calc_max_defense()
         return max_def >= incoming_damage
         
-    def play_cards(self:list[str], commands)->list[Card]:
+    def play_cards(self, commands)->list[Card]:
         """Returns list of cards specified in the commands.
         Removes the cards from the player's hand."""
         cards = []
@@ -130,6 +136,16 @@ class Player:
                     cards.append(card)
                     self.hand.remove(card)
                     break
+
+        return cards
+    
+    def play_all_cards(self)->list[Card]:
+        """
+        Removes and returns all cards from hand.
+        """
+        cards = []
+        while len(self.hand) > 0:
+            cards.append(self.hand.pop())
 
         return cards
     
@@ -160,7 +176,6 @@ class Player:
         
         command = ''.join(cmd_list)
         return command
-
 
 class RegicideGame:
     def __init__(self, player_names=['a','b']):

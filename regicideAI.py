@@ -49,27 +49,35 @@ class RegicideGame_AI(RegicideGame):
 
     def check_auto_defend(self):
         """
-        If enemy turn, check for 0 attack then calls self.next_player()
-        If attack isn't 0, calls self.check_full_defend() which might end the game. 
+        If enemy turn, checks for 0 attack, checks if attack can be survived, then checks if a player must spend all of their cards to defend.
+        Calling self.check_full_defend() sets self.running = False if can't be survived
         """
         if self.is_player_turn:
             return None
         
         if self.current_enemy.attack <= 0:
-            print('Auto defend')
+            print('Auto defend no attack')
             self.is_player_turn = True
             self.next_player()
-        else:
-            self.check_full_defend()
+        elif self.check_full_defend():
+            if len(self.active_player.hand) == 1 or \
+            self.active_player.calc_max_defense() == self.current_enemy.attack:
+                print('Auto defend all card(s)')
+                self.active_player.play_all_cards()
+                self.is_player_turn = True
+                self.next_player()
             
 
     def check_full_defend(self):
         """
-        If active player cannot survive and attack, self.running = False and self.game_result = "Lose"
+        If active player cannot survive and attack, self.running = False and self.game_result = "Lose" and returns False
+        If survivable return True
         """
         if not self.active_player.can_survive_attack(self.current_enemy.attack):
             self.running = False
             self.game_result = 'Lose'
+            return False
+        return True
 
     def check_no_cards(self):
         """
