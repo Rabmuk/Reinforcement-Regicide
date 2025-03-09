@@ -16,6 +16,9 @@ from regicideAI import RegicideGame_AI
 from regicide import Player
 
 LOAD_MODEL = True
+num_episodes = 300
+CYCLE_LIMIT = 20_000
+
 MODEL_PKL_PATH = './model_state.pkl'
 GAME_LOG_PATH = './games.log'
 FINAL_SCORE_LOG_PATH = './final_scores.log'
@@ -121,7 +124,7 @@ def log_final_scores():
 
         # Win pct
         file.write('\n')
-        w_pct_line = f"Win pct {win_count/len(episode_final_score):2%}" 
+        w_pct_line = f"Win pct {win_count/len(episode_final_score):.2%}" 
         file.write(w_pct_line)
         
         # Best remaining Enemies
@@ -134,10 +137,11 @@ def log_final_scores():
 
         # Avg remaining Enemies
         file.write('\n')
-        avg_score = "Best " + str(avg([
+        sum_ = sum([
             int(row[1])
             for row in episode_final_score
-        ]))
+        ])
+        avg_score = "Average " + str(sum_ / len(episode_final_score))
         file.write(avg_score)
 
     episode_final_score = []
@@ -226,8 +230,6 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
-num_episodes = 200
-
 for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
     state, info = env.reset()
@@ -236,7 +238,7 @@ for i_episode in range(1, num_episodes+1):
         if t % 100 == 0:
             print (f'Episode: {i_episode} Cycle {t}')
 
-        if t > 20000:
+        if t > CYCLE_LIMIT:
             info = state_to_str(state)
             with open(GAME_LOG_PATH, 'a') as file:
                 file.write('\n\n')
