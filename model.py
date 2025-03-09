@@ -44,12 +44,7 @@ n_actions = env.action_space
 state, info = env.reset()
 n_observations = len(state)
 
-# # set up matplotlib
-# is_ipython = 'inline' in matplotlib.get_backend()
-# if is_ipython:
-#     from IPython import display
-
-# plt.ion()
+episode_final_score = []
 
 # if GPU is to be used
 device = torch.device(
@@ -108,24 +103,33 @@ def save_model_to_file():
     print('Saving Model')
     torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 
+def log_final_scores():
+    with open(FINAL_SCORE_LOG_PATH, 'a') as file:
+        file.write('\n\n')
+        file.write(str(episode_final_score))
+        win_line = "Wins " + str(sum([
+            row[0] == 'Win'
+            for row in episode_final_score
+        ]))
+        file.write('\n')
+        file.write(win_line)
+        print([
+            int(row[1])
+            for row in episode_final_score
+        ])
+        best_score = "Best " + str(min([
+            int(row[1])
+            for row in episode_final_score
+        ]))
+        file.write('\n')
+        file.write(best_score)
+
+    episode_final_score = []
+
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 memory = ReplayMemory(10000)
 
 steps_done = 0
-
-# def convert_torch_to_action_list(torch:torch, active_player:Player)->list[int]:
-#     torch = torch[0]
-#     for k in range(4,1,-1):
-#         topk = torch.topk(k)
-#         cmd_list = [
-#             Card_Commands.int_to_cmd[index]
-#             for index in topk.indices
-#             ]
-        
-#         if active_player.valid_cmd_list(cmd_list):
-#             return topk.indices
-        
-#     return torch.topk(1).indices
     
 def select_action(state):
     global steps_done
@@ -144,33 +148,6 @@ def select_action(state):
         # print('random move')
         rand_index = random.randint(0,env.action_space-1)
         return torch.tensor([[rand_index]], device=device, dtype=torch.long)
-
-episode_final_score = []
-
-def plot_durations(show_result=False):
-    plt.figure(1)
-    durations_t = torch.tensor(episode_final_score, dtype=torch.float)
-    if show_result:
-        plt.title('Result')
-    else:
-        plt.clf()
-        plt.title('Training...')
-    plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
-    # Take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
-
-    plt.pause(0.001)  # pause a bit so that plots are updated
-    # if is_ipython:
-    #     if not show_result:
-    #         display.display(plt.gcf())
-    #         display.clear_output(wait=True)
-    #     else:
-    #         display.display(plt.gcf())
 
 def state_to_str(state)->str:
     state = state[0].int()
@@ -281,37 +258,14 @@ for i_episode in range(1, num_episodes+1):
 
         if done:
             print(f'Game #{i_episode} has ended')
-            # TODO: get game final score
             episode_final_score.append(
                 (env.game_result, len(env.enemies))
                 )
-            # plot_durations()
             break
 
     if i_episode > 5 and i_episode % 20 == 0:
         save_model_to_file()
+        log_final_scores()
 
 print('Complete')
-# plot_durations(show_result=True)
 print(episode_final_score)
-with open(FINAL_SCORE_LOG_PATH, 'a') as file:
-    file.write('\n\n')
-    file.write(str(episode_final_score))
-    win_line = "Wins " + str(sum([
-        row[0] == 'Win'
-        for row in episode_final_score
-    ]))
-    file.write('\n')
-    file.write(win_line)
-    print([
-        int(row[1])
-        for row in episode_final_score
-    ])
-    best_score = "Best " + str(min([
-        int(row[1])
-        for row in episode_final_score
-    ]))
-    file.write('\n')
-    file.write(best_score)
-# plt.ioff()
-# plt.show()
