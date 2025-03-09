@@ -104,25 +104,41 @@ def save_model_to_file():
     torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 
 def log_final_scores():
+    global episode_final_score
     with open(FINAL_SCORE_LOG_PATH, 'a') as file:
-        file.write('\n\n')
+        file.write('\n')
+        file.write('\n')
         file.write(str(episode_final_score))
-        win_line = "Wins " + str(sum([
+
+        # Win count
+        file.write('\n')
+        win_count = sum([
             row[0] == 'Win'
             for row in episode_final_score
-        ]))
-        file.write('\n')
-        file.write(win_line)
-        print([
-            int(row[1])
-            for row in episode_final_score
         ])
+        win_line = "Wins " + str(win_count)
+        file.write(win_line)
+
+        # Win pct
+        file.write('\n')
+        w_pct_line = f"Win pct {win_count/len(episode_final_score):2%}" 
+        file.write(w_pct_line)
+        
+        # Best remaining Enemies
+        file.write('\n')
         best_score = "Best " + str(min([
             int(row[1])
             for row in episode_final_score
         ]))
-        file.write('\n')
         file.write(best_score)
+
+        # Avg remaining Enemies
+        file.write('\n')
+        avg_score = "Best " + str(avg([
+            int(row[1])
+            for row in episode_final_score
+        ]))
+        file.write(avg_score)
 
     episode_final_score = []
 
