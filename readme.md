@@ -44,6 +44,12 @@ extra nn layer and starting to tune hyper parameters like learning rate
 
 Idea where if an invalid move is played to increase randomness
 
+## Model 3
+
+rewards have been updated. Now after each play, generates reward based on value of cards still in hand
+
+If an invalid move occurs introduces more randomness
+
 ## insights
 
 Because you can play multiple cards at once there's not a descrete actions space. If the most favored card can be played, then also check the second most favored action.

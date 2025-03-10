@@ -154,13 +154,13 @@ class RegicideGame_AI(RegicideGame):
                     played_cards = self.active_player.play_cards(cmd_list)
                     self.play_area.add_card(played_cards)
                     self.attack_enemy(played_cards)
-                    reward = 1 # successfull attack gives 1 point
+                    reward = self.active_player.calc_max_defense() # larger reward for keeping larger cards
                     self.is_player_turn = False
                     if self.check_enemy_defeated():
-                        reward = 50
+                        reward += 50
                         self.is_player_turn = True
                 except AssertionError as e:
-                    # return reward of -1 because command was invalid
+                    # return reward of -10 because command was invalid
                     reward = -10
                     invalid_a = True
             
@@ -174,9 +174,9 @@ class RegicideGame_AI(RegicideGame):
                 self.discard.add_card(played_cards)
                 self.next_player()
                 self.is_player_turn = True
-                # self.attack_enemy(played_cards)
+                reward = self.active_player.calc_max_defense() # larger reward for keeping larger cards
             except AssertionError as e:
-                # return reward of -1 because command was invalid
+                # return reward of -10 because command was invalid
                 reward = -10
                 invalid_a = True
 
@@ -189,6 +189,9 @@ class RegicideGame_AI(RegicideGame):
         # one last check of auto defend
         if self.running:
             self.check_auto_defend()
+            
+        # double check for soft lock
+        self.check_no_cards()
 
         done = not self.running
         if done:

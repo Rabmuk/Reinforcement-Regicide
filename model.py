@@ -16,14 +16,16 @@ from regicideAI import RegicideGame_AI
 from regicide import Player
 
 LOAD_MODEL = True
-num_episodes = 200
+num_episodes = 2_500
 CYCLE_LIMIT = 15_000
 MAX_MEM = 20_000
-INVALID_BACKOFF_FACTOR = 1.1
+INVALID_BACKOFF_FACTOR = 1.01
+INVALID_BACKOFF_STATIC = 2
 
-MODEL_PKL_PATH = './model_3_layer.pkl'
-GAME_LOG_PATH = './games.log'
-FINAL_SCORE_LOG_PATH = './final_scores.log'
+MODEL_NAME = 'model3'
+MODEL_PKL_PATH = './' + MODEL_NAME + '_.pkl'
+GAME_LOG_PATH = './' + MODEL_NAME + '_games_hit_cycle_lim.log'
+FINAL_SCORE_LOG_PATH = './' + MODEL_NAME + '_final_scores.log'
 
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
 # GAMMA is the discount factor as mentioned in the previous section
@@ -32,11 +34,11 @@ FINAL_SCORE_LOG_PATH = './final_scores.log'
 # EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
 # TAU is the update rate of the target network
 # LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 256
-GAMMA = 0.8
-EPS_START = 0.2
-EPS_END = 0.01
-EPS_DECAY = 10_000
+BATCH_SIZE = 512
+GAMMA = 0.9
+EPS_START = 0.1
+EPS_END = 0.0001
+EPS_DECAY = 50_000
 TAU = 0.005
 LR = 1e-4
 
@@ -267,7 +269,8 @@ for i_episode in range(1, num_episodes+1):
         observation, reward, done, invalid_action = env.step(action)
 
         if invalid_action and steps_done > 100:
-            steps_done /= INVALID_BACKOFF_FACTOR
+            # steps_done /= INVALID_BACKOFF_FACTOR
+            steps_done -= INVALID_BACKOFF_STATIC
             steps_done = int(steps_done)
         
         reward = torch.tensor([reward], device=device)
