@@ -111,55 +111,6 @@ def save_model_to_file():
     print('Saving Model')
     torch.save(policy_net.state_dict(), MODEL_PKL_PATH)
 
-def log_final_scores():
-    global episode_final_score
-    with open(FINAL_SCORE_LOG_PATH, 'a') as file:
-        file.write('\n')
-        file.write('\n')
-        file.write(str(episode_final_score))
-
-        # Win count
-        file.write('\n')
-        win_count = sum([
-            row[0] == 'Win'
-            for row in episode_final_score
-        ])
-        win_line = "Wins " + str(win_count)
-        file.write(win_line)
-
-        # Win pct
-        file.write('\n')
-        w_pct_line = f"Win pct {win_count/len(episode_final_score):.2%}" 
-        file.write(w_pct_line)
-        
-        # Best remaining Enemies
-        file.write('\n')
-        best_score = "Best " + str(min([
-            int(row[1])
-            for row in episode_final_score
-        ]))
-        file.write(best_score)
-
-        # Avg remaining Enemies
-        file.write('\n')
-        sum_ = sum([
-            int(row[1])
-            for row in episode_final_score
-        ])
-        avg_score = f"Avg Enemies Remaining {sum_ / len(episode_final_score):.2f}"
-        file.write(avg_score)
-
-        # Avg cycles
-        file.write('\n')
-        sum_ = sum([
-            int(row[2])
-            for row in episode_final_score
-        ])
-        avg_score = f"Average Cycles {sum_ / len(episode_final_score):.2f}"
-        file.write(avg_score)
-
-    episode_final_score = []
-
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 memory = ReplayMemory(MAX_MEM)
 
@@ -172,14 +123,12 @@ def select_action(state):
         math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
     if sample > eps_threshold:
-        # print('nn move')
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
             return policy_net(state).max(1).indices.view(1, 1)
     else:
-        # print('random move')
         rand_index = random.randint(0,env.action_space-1)
         return torch.tensor([[rand_index]], device=device, dtype=torch.long)
 
@@ -311,7 +260,6 @@ for i_episode in range(1, num_episodes+1):
 
     if i_episode > 1 and i_episode % 20 == 0:
         save_model_to_file()
-        # log_final_scores()
 
 print('Complete')
 print(episode_final_score)
