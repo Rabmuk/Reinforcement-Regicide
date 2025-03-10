@@ -17,6 +17,8 @@ class RegicideGame_AI(RegicideGame):
         self.action_space = len(Card_Commands.int_to_cmd)
         super().__init__(player_names)
         self.build_action_space()
+        self.steps_taken = 0
+        self.invalid_steps_taken = 0
 
     def build_action_space(self):
         num_str = ''.join(
@@ -129,6 +131,8 @@ class RegicideGame_AI(RegicideGame):
         return self.get_state(), 'Info'
     
     def step(self, action_int:int):
+        self.steps_taken += 1
+        
         reward = 0
         invalid_a = False
 
@@ -137,6 +141,7 @@ class RegicideGame_AI(RegicideGame):
             command = self.active_player.icmd_to_command(icmd)
         except IndexError as e:
             # trying to play a card that doesn't exist
+            self.invalid_steps_taken += 1
             reward = -10
             done = False
             invalid_a = True
@@ -161,6 +166,7 @@ class RegicideGame_AI(RegicideGame):
                         self.is_player_turn = True
                 except AssertionError as e:
                     # return reward of -10 because command was invalid
+                    self.invalid_steps_taken += 1
                     reward = -10
                     invalid_a = True
             
@@ -177,6 +183,7 @@ class RegicideGame_AI(RegicideGame):
                 reward = self.active_player.calc_max_defense() # larger reward for keeping larger cards
             except AssertionError as e:
                 # return reward of -10 because command was invalid
+                self.invalid_steps_taken += 1
                 reward = -10
                 invalid_a = True
 

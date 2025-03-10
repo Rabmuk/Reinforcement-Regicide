@@ -18,7 +18,7 @@ MAX_MEM = 20_000
 
 MODEL_NAME = 'model3'
 MODEL_PKL_PATH = './' + MODEL_NAME + '_.pkl'
-GAME_LOG_PATH = './' + MODEL_NAME + '_games_hit_cycle_lim.log'
+CYCLE_LIMIT_LOG_PATH = './' + MODEL_NAME + '_games_hit_cycle_lim.log'
 FINAL_SCORE_LOG_PATH = './' + MODEL_NAME + '_final_scores.log'
 FINAL_SCORE_CSV_PATH = './' + MODEL_NAME + '_final_scores.csv'
 
@@ -146,6 +146,18 @@ def state_to_str(state)->str:
 
     return ', '.join(return_list)
 
+def log_cycle_limit_game(state):
+    global CYCLE_LIMIT_LOG_PATH
+    info = state_to_str(state)
+    with open(CYCLE_LIMIT_LOG_PATH, 'a') as file:
+        file.write('\n\n')
+        file.write(f'Abondoning episode because t limit reached. t = {t}')
+        file.write('\n')
+        file.write(str(state))
+        file.write('\n')
+        file.write(info)
+
+
 def optimize_model():
     if len(memory) < BATCH_SIZE:
         return
@@ -207,14 +219,7 @@ for i_episode in range(1, num_episodes+1):
             print (f'Episode: {i_episode} Cycle {t}')
 
         if t > CYCLE_LIMIT:
-            info = state_to_str(state)
-            with open(GAME_LOG_PATH, 'a') as file:
-                file.write('\n\n')
-                file.write(f'Abondoning episode because t limit reached. t = {t}')
-                file.write('\n')
-                file.write(str(state))
-                file.write('\n')
-                file.write(info)
+            log_cycle_limit_game()
             break
 
         action = select_action(state)
@@ -250,7 +255,7 @@ for i_episode in range(1, num_episodes+1):
 
         if done:
             print(f'Game #{i_episode} has ended')
-            info = (env.game_result, len(env.enemies), t)
+            info = (env.game_result, len(env.enemies), env.steps_taken, env.invalid_steps_taken)
             episode_final_score.append(info )
             # print to CSV
             with open(FINAL_SCORE_CSV_PATH, 'a') as csv_file:
