@@ -1,8 +1,6 @@
 # import gymnasium as gym
 import math
 import random
-import matplotlib
-import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count
 
@@ -11,21 +9,18 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from materials import Card_Commands
 from regicideAI import RegicideGame_AI
-from regicide import Player
 
 LOAD_MODEL = True
 num_episodes = 2_500
-CYCLE_LIMIT = 15_000
+CYCLE_LIMIT = 5_000
 MAX_MEM = 20_000
-INVALID_BACKOFF_FACTOR = 1.01
-INVALID_BACKOFF_STATIC = 2
 
 MODEL_NAME = 'model3'
 MODEL_PKL_PATH = './' + MODEL_NAME + '_.pkl'
 GAME_LOG_PATH = './' + MODEL_NAME + '_games_hit_cycle_lim.log'
 FINAL_SCORE_LOG_PATH = './' + MODEL_NAME + '_final_scores.log'
+FINAL_SCORE_CSV_PATH = './' + MODEL_NAME + '_final_scores.csv'
 
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
 # GAMMA is the discount factor as mentioned in the previous section
@@ -36,11 +31,15 @@ FINAL_SCORE_LOG_PATH = './' + MODEL_NAME + '_final_scores.log'
 # LR is the learning rate of the ``AdamW`` optimizer
 BATCH_SIZE = 512
 GAMMA = 0.9
-EPS_START = 0.1
-EPS_END = 0.0001
-EPS_DECAY = 50_000
+EPS_START = 0.3
+EPS_END = 0.0
+EPS_DECAY = 20
 TAU = 0.005
 LR = 1e-4
+
+# increase randomness to avoid deadlocks
+# INVALID_BACKOFF_FACTOR = 1.01
+INVALID_BACKOFF_STATIC = 2
 
 # env = gym.make("CartPole-v1")
 env = RegicideGame_AI()
@@ -247,6 +246,10 @@ def optimize_model():
 
 for i_episode in range(1, num_episodes+1):
     print(f'Starting Episode #{i_episode}')
+
+    # start of episode go for 0 randomness
+    steps_done = EPS_DECAY
+
     # Initialize the environment and get its state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -268,10 +271,10 @@ for i_episode in range(1, num_episodes+1):
         action = select_action(state)
         observation, reward, done, invalid_action = env.step(action)
 
-        if invalid_action and steps_done > 100:
+        if invalid_action:
             # steps_done /= INVALID_BACKOFF_FACTOR
             steps_done -= INVALID_BACKOFF_STATIC
-            steps_done = int(steps_done)
+            steps_done = max(0,int(steps_done))
         
         reward = torch.tensor([reward], device=device)
 
@@ -298,14 +301,17 @@ for i_episode in range(1, num_episodes+1):
 
         if done:
             print(f'Game #{i_episode} has ended')
-            episode_final_score.append(
-                (env.game_result, len(env.enemies), t)
-                )
+            info = (env.game_result, len(env.enemies), t)
+            episode_final_score.append(info )
+            # print to CSV
+            with open(FINAL_SCORE_CSV_PATH, 'a') as csv_file:
+                csv_file.write('\n')
+                csv_file.write(','.join(map(str,info)))
             break
 
-    if i_episode > 5 and i_episode % 20 == 0:
+    if i_episode > 1 and i_episode % 20 == 0:
         save_model_to_file()
-        log_final_scores()
+        # log_final_scores()
 
 print('Complete')
 print(episode_final_score)
