@@ -127,7 +127,7 @@ class RegicideGame_AI(RegicideGame):
         return game_state
 
     def reset(self):
-        super().__init__(self.player_names)
+        self.__init__(self.player_names)
         return self.get_state(), 'Info'
     
     def step(self, action_int:int):

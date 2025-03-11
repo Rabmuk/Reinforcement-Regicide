@@ -33,13 +33,14 @@ BATCH_SIZE = 512
 GAMMA = 0.9
 EPS_START = 0.3
 EPS_END = 0.0
-EPS_DECAY = 20
+EPS_DECAY = 1500
 TAU = 0.005
-LR = 1e-4
+LR = 1e-5
+# LR = 1e-4
 
 # increase randomness to avoid deadlocks
 # INVALID_BACKOFF_FACTOR = 1.01
-INVALID_BACKOFF_STATIC = 2
+INVALID_BACKOFF_STATIC = 1
 
 # env = gym.make("CartPole-v1")
 env = RegicideGame_AI()
@@ -116,13 +117,17 @@ memory = ReplayMemory(MAX_MEM)
 
 steps_done = 0
     
-def select_action(state):
+def select_action(state, last_act_invalid=False)->int:
+    """
+    Takes game state and predicts best action.
+    If last action was invalid, will choose a random action.
+    """
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
-    if sample > eps_threshold:
+    if not last_act_invalid and sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return the largest column value of each row.
             # second column on max result is index of where max element was
@@ -214,21 +219,22 @@ for i_episode in range(1, num_episodes+1):
     # Initialize the environment and get its state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    invalid_action = False
     for t in count():
         if t % 500 == 0:
             print (f'Episode: {i_episode} Cycle {t}')
 
         if t > CYCLE_LIMIT:
-            log_cycle_limit_game()
+            log_cycle_limit_game(state)
             break
 
-        action = select_action(state)
+        action = select_action(state, invalid_action)
         observation, reward, done, invalid_action = env.step(action)
 
-        if invalid_action:
-            # steps_done /= INVALID_BACKOFF_FACTOR
-            steps_done -= INVALID_BACKOFF_STATIC
-            steps_done = max(0,int(steps_done))
+        # if invalid_action:
+        #     # steps_done /= INVALID_BACKOFF_FACTOR
+        #     steps_done -= INVALID_BACKOFF_STATIC
+        #     steps_done = max(0,int(steps_done))
         
         reward = torch.tensor([reward], device=device)
 

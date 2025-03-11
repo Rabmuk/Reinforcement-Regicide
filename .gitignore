@@ -3,3 +3,4 @@ testing.py
 __pycache__/
 *.log
 *.pkl
+*.csv
