@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from regicideAI import RegicideGame_AI
 
 LOAD_MODEL = True
-num_episodes = 2_500
+num_episodes = None # gets set later if set to none
 CYCLE_LIMIT = 5_000
 MAX_MEM = 20_000
 
@@ -50,6 +50,12 @@ n_actions = env.action_space
 # Get the number of state observations
 state, info = env.reset()
 n_observations = len(state)
+
+with open(FINAL_SCORE_CSV_PATH, 'r') as file:
+    if num_episodes == None:
+        num_episodes = len(file.readlines()) * .2
+
+num_episodes = int(max(num_episodes, 40))
 
 episode_final_score = []
 
@@ -272,5 +278,6 @@ for i_episode in range(1, num_episodes+1):
     if i_episode > 1 and i_episode % 20 == 0:
         save_model_to_file()
 
+print('\n')
 print('Complete')
-print(episode_final_score)
+print(f'{len(episode_final_score)} episodes completed')
